@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest something Termary should do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: "Search first — if it already exists, add a 👍 and a comment rather than a duplicate."
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the problem?
+      description: |
+        Describe the situation you're in, not the feature. "I can't tell which of six
+        agents finished first" leads somewhere better than "add a timestamp column".
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which part of Termary?
+      options:
+        - macOS app
+        - iOS companion app
+        - Windows / Linux app
+        - MCP server / agent tools
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How do you work around it today?
