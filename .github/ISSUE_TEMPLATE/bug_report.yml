@@ -50,6 +50,45 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part?
+      description: Pick the closest one — this is what routes the issue.
+      options:
+        - "Terminal, panes & splits"
+        - "Tabs, groups & layout"
+        - "Agent state detection (working / needs you)"
+        - "Agent tools & MCP bridge"
+        - "Browser pane"
+        - "Editor & file preview"
+        - "Files, Search & Git panel"
+        - "SSH & saved hosts"
+        - "Phone pairing & remote access"
+        - "Terminal mirror on phone"
+        - "Widget & Live Activity"
+        - "Notifications & push"
+        - "Themes & appearance"
+        - "Account, Pro & billing"
+        - "Fan-out & worktrees"
+        - "Install, update & startup"
+        - "Performance (slow, laggy, high CPU)"
+        - "Crash or freeze"
+        - "Something else / not sure"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: How bad is it?
+      options:
+        - "Annoying but I can work around it"
+        - "Blocks part of my workflow"
+        - "I can't use Termary"
+    validations:
+      required: true
+
   - type: input
     id: os-version
     attributes:

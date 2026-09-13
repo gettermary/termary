@@ -1,0 +1,105 @@
+name: Triage
+
+# Issue forms bury their answers in the body, so the issue LIST shows nothing but a
+# title. This reads the form back and puts the useful facts where they can be seen and
+# filtered: a [Platform] title prefix and platform/area labels.
+#
+# Runs on open and on edit, and is idempotent — re-running never double-prefixes.
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body  = issue.body || '';
+
+            // Read the answer under a "### Heading" in a rendered issue form.
+            // Unanswered optional fields render as "_No response_".
+            const field = (heading) => {
+              const re = new RegExp(`###\\s*${heading}\\s*\\n+([\\s\\S]*?)(?=\\n###|$)`, 'i');
+              const m = body.match(re);
+              if (!m) return '';
+              const v = m[1].trim();
+              return v === '_No response_' ? '' : v;
+            };
+
+            const surface = field('Where does this happen\\?') || field('Which part of Termary\\?');
+            const agent   = field('Agent CLI and version');
+            const output  = field("What the agent's terminal showed");
+            const conn    = field('How was the phone connected\\?');
+            const widget  = field('Widget diagnostic line');
+
+            // --- platform -----------------------------------------------------
+            const PLATFORMS = [
+              [/macos app/i,          'macOS',   'platform: macos'],
+              [/ios companion/i,      'iOS',     'platform: ios'],
+              [/windows/i,            'Windows', 'platform: windows'],
+              [/linux/i,              'Linux',   'platform: linux'],
+              [/mcp server|termary cli|agent tools/i, 'MCP', 'platform: mcp'],
+              [/website|account/i,    'Web',     'platform: web'],
+            ];
+            const hit = PLATFORMS.find(([re]) => re.test(surface));
+            const labels = new Set();
+            let tag = null;
+            if (hit) { tag = hit[1]; labels.add(hit[2]); }
+
+            // --- area (the reporter picks it; exact match on the dropdown) -----
+            const area = field('Which part\\?');
+            const AREAS = {
+              'Terminal, panes & splits':                    'area: panes',
+              'Tabs, groups & layout':                       'area: tabs',
+              'Agent state detection (working / needs you)': 'area: agent-detection',
+              'Agent tools & MCP bridge':                    'area: mcp',
+              'Browser pane':                                'area: browser',
+              'Editor & file preview':                       'area: editor',
+              'Files, Search & Git panel':                   'area: files',
+              'SSH & saved hosts':                           'area: ssh',
+              'Phone pairing & remote access':               'area: remote',
+              'Terminal mirror on phone':                    'area: mirror',
+              'Widget & Live Activity':                      'area: widget',
+              'Notifications & push':                        'area: push',
+              'Themes & appearance':                         'area: theme',
+              'Account, Pro & billing':                      'area: account',
+              'Fan-out & worktrees':                         'area: fanout',
+              'Install, update & startup':                   'area: install',
+              'Performance (slow, laggy, high CPU)':         'area: performance',
+              'Crash or freeze':                             'area: crash',
+            };
+            if (AREAS[area]) labels.add(AREAS[area]);
+
+            // Belt-and-braces: an optional field being filled implies its area even
+            // when the reporter picked "not sure".
+            if (agent || output) labels.add('area: agent-detection');
+            if (widget)          labels.add('area: widget');
+
+            // --- severity ------------------------------------------------------
+            const sev = field('How bad is it\\?');
+            if (/can't use/i.test(sev))      labels.add('severity: blocker');
+            else if (/Blocks part/i.test(sev)) labels.add('severity: major');
+            else if (/work around/i.test(sev)) labels.add('severity: minor');
+
+            if (labels.size) {
+              await github.rest.issues.addLabels({
+                ...context.repo, issue_number: issue.number, labels: [...labels],
+              });
+            }
+
+            // --- title prefix --------------------------------------------------
+            // Only prefix when there isn't already a [Bracket] at the front, so an
+            // edit (or a human who prefixed by hand) is left alone.
+            if (tag && !/^\s*\[[^\]]+\]/.test(issue.title)) {
+              await github.rest.issues.update({
+                ...context.repo, issue_number: issue.number,
+                title: `[${tag}] ${issue.title.trim()}`,
+              });
+            }
